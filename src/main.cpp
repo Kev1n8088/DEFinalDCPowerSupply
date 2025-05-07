@@ -56,7 +56,6 @@ currentAndVoltage secondary = currentAndVoltage();
 
 displaySelected displaySelect = displaySelected();
 
-AP33772S usbpd;
 
 void setup() {
   initSS();
@@ -66,29 +65,30 @@ void setup() {
   pixel.begin();
   pixel.show();  
   pixel.setBrightness(50); 
-  usbpd.begin();
+  //usbpd.begin();
   // put your setup code here, to run once:
 }
 
 void loop() {
   displaySettings();
-  displayData();
+  //displayData();
+  display.display();
+
   neopix();
   onOff();
   checkForEncoderUpdate();
-  provideOutput();
+  //provideOutput();
 
   delay(10);
   display.clearDisplay();
-
   // put your main code here, to run repeatedly:
 }
 
 void initCurrentsAndVoltages(){
-  primary.voltage = 0.0;
-  primary.current = 0.0;
-  secondary.voltage = 0.0;
-  secondary.current = 0.0;
+  primary.voltage = 5.0;
+  primary.current = 1.0;
+  secondary.voltage = 3.3;
+  secondary.current = 1.0;
 }
 
 void swapCurrentsAndVoltages(){
@@ -179,29 +179,40 @@ void checkForEncoderUpdate(){
     displaySelect.line = 0;
   }
   if (displaySelect.voltage < 0) {
-    displaySelect.voltage = 2;
-  } else if (displaySelect.voltage > 2) {
+    displaySelect.voltage = 1;
+  } else if (displaySelect.voltage > 1) {
     displaySelect.voltage = 0;
   }
-  if (displaySelect.current < 1) {
-    displaySelect.current = 2;
-  } else if (displaySelect.current > 2) {
+  if (displaySelect.current < 0) {
     displaySelect.current = 1;
+  } else if (displaySelect.current > 1) {
+    displaySelect.current = 0;
   }
+
 
   int32_t new_position = ss.getEncoderPosition();
   // did we move around?
   if (encoder_position != new_position) {
 
-      int32_t delta = (new_position - encoder_position) / 10;
+      int32_t delta = (new_position - encoder_position) ;
 
       encoder_position = new_position;      // and save for next round
       switch(displaySelect.line){
         case (0):
           primary.voltage += delta * VOLTAGE_STEP * pow(10, displaySelect.voltage);
+          if (primary.voltage > VOLTAGE_MAX){
+            primary.voltage = VOLTAGE_MAX;
+          }else if(primary.voltage < VOLTAGE_MIN){
+            primary.voltage = VOLTAGE_MIN;
+          }
           break;
         case (1):
           primary.current += delta * CURRENT_STEP * pow(10, displaySelect.current);
+          if (primary.current > CURRENT_MAX){
+            primary.current = CURRENT_MAX;
+          }else if(primary.current < CURRENT_MIN){
+            primary.current = CURRENT_MIN;
+          }
           break;
       }
   }
@@ -215,6 +226,8 @@ void onOff(){
     }else{
       mode = 0;
     }
+    buttonReleased = false;
+    delay(40);
   }
 
   if(digitalRead(PWR_PIN)){
@@ -234,6 +247,7 @@ void neopix(){
       pixel.setPixelColor(0, pixel.Color(150, 0, 0));
       break;  
   }
+  pixel.show();
 }
 
 void provideOutput(){
@@ -258,21 +272,78 @@ void displaySettings(){
   display.setTextWrap(false);
 
   display.println("Primary");
+  display.setCursor(0, 10);
+  if(primary.voltage < 10){
+    display.print(0);
+  }
   display.print(primary.voltage);
   display.println("V");
+  display.setCursor(0, 20);
+  if(primary.current < 10){
+    display.print(0);
+  }
   display.print(primary.current);
   display.println("A");
+  display.setCursor(0, 30);
+  if(primary.voltage * primary.current < 10){
+    display.print(0);
+  }
   display.print(primary.voltage * primary.current);
   display.println("W");
 
   display.setCursor(64, 0);
   display.println("Secondary");
+  display.setCursor(64, 10);
+  if(secondary.voltage < 10){
+    display.print(0);
+  }
   display.print(secondary.voltage);
   display.println("V");
+  display.setCursor(64, 20);
+  if(secondary.current < 10){
+    display.print(0);
+  }
   display.print(secondary.current);
   display.println("A");
+  display.setCursor(64, 30);
+  if(secondary.voltage * secondary.current < 10){
+    display.print(0);
+  }
   display.print(secondary.voltage * secondary.current);
   display.println("W");
+
+  switch(displaySelect.line){
+    case 0:
+      display.setCursor(40, 10);
+      display.print("<");
+      switch(displaySelect.voltage){
+        case 0:
+          display.setCursor(0, 40);
+          display.print("   ^");
+          break;
+        case 1:
+          display.setCursor(0, 40);
+          display.print(" ^");
+          break;
+      }
+      break;
+    case 1:
+      display.setCursor(40, 20);
+      display.print("<");
+      switch(displaySelect.current){
+        case 0:
+          display.setCursor(0, 40);
+          display.print("   ^");
+          break;
+        case 1:
+          display.setCursor(0, 40);
+          display.print(" ^");
+          break;
+      }
+      break;
+  }
+
+
 }
 
 void displayData(){
